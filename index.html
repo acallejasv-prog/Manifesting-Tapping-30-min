@@ -42,7 +42,32 @@
   .ring-fg { fill: none; stroke-width: 3; stroke-linecap: round; transition: stroke-dashoffset 1s linear, stroke .6s; }
   .ring-time { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; font-size: 20px; font-weight: 300; color: #444; }
 
-  .hint { font-size: 11px; letter-spacing: .06em; text-transform: uppercase; z-index: 1; line-height: 1.6; transition: color .6s; }
+  .hint { font-size: 11px; letter-spacing: .06em; text-transform: uppercase; z-index: 1; line-height: 1.6; transition: color .6s; margin-bottom: 20px; }
+
+  /* Breathing reminder */
+  .breath-pill {
+    z-index: 1;
+    display: flex; align-items: center; gap: 8px;
+    padding: 7px 14px;
+    border-radius: 20px;
+    border: 1px solid;
+    transition: border-color .6s;
+  }
+  .breath-dot {
+    width: 6px; height: 6px; border-radius: 50%;
+    animation: breathe 4s ease-in-out infinite;
+    transition: background .6s;
+    flex-shrink: 0;
+  }
+  .breath-label {
+    font-size: 10px; font-weight: 600;
+    letter-spacing: .12em; text-transform: uppercase;
+    transition: color .6s;
+  }
+  @keyframes breathe {
+    0%, 100% { transform: scale(1); opacity: .5; }
+    50%       { transform: scale(1.6); opacity: 1; }
+  }
 
   /* RIGHT */
   .right {
@@ -50,20 +75,25 @@
     display: flex; flex-direction: column;
     justify-content: center;
     padding: 40px 60px 28px 60px;
-    gap: 10px;
+    gap: 8px;
     position: relative; overflow: hidden;
   }
   .right-glow { position: absolute; inset: -200px; border-radius: 50%; filter: blur(140px); opacity: .04; pointer-events: none; transition: background 1s; }
 
-  .cue { display: flex; flex-direction: column; gap: 4px; transition: all .5s ease; }
+  .cue { display: flex; flex-direction: column; gap: 3px; transition: all .5s ease; }
   .cue-num { font-size: 9px; font-weight: 700; letter-spacing: .14em; text-transform: uppercase; transition: color .5s; }
-  .cue-text { font-weight: 400; line-height: 1.25; transition: color .5s, text-shadow .5s, font-size .35s; letter-spacing: -.2px; }
+  .cue-text { font-weight: 400; line-height: 1.25; transition: color .5s, text-shadow .5s, font-size .35s, opacity .5s; letter-spacing: -.2px; }
 
-  .cue.active .cue-text  { font-size: 38px; font-weight: 500; }
-  .cue.done-cue .cue-text { font-size: 18px; color: #1c1c1c; text-shadow: none; }
-  .cue.done-cue .cue-num  { color: #1c1c1c; }
-  .cue.dim .cue-text     { font-size: 18px; color: #181818; text-shadow: none; }
-  .cue.dim .cue-num      { color: #181818; }
+  /* ACTIVE — big and neon */
+  .cue.active .cue-text { font-size: 38px; font-weight: 500; }
+
+  /* DONE — readable, clearly secondary */
+  .cue.done-cue .cue-text { font-size: 20px; color: #383838; text-shadow: none; opacity: 1; }
+  .cue.done-cue .cue-num  { color: #2a2a2a; }
+
+  /* DIM — slightly visible so you can see what's coming */
+  .cue.dim .cue-text { font-size: 20px; color: #303030; text-shadow: none; opacity: 1; }
+  .cue.dim .cue-num  { color: #252525; }
 
   .cue-bar { height: 2px; border-radius: 2px; background: #111; overflow: hidden; display: none; margin-top: 6px; }
   .cue.active .cue-bar { display: block; }
@@ -73,8 +103,7 @@
   .nav {
     grid-area: nav;
     display: flex; align-items: center;
-    padding: 18px 60px 24px;
-    gap: 14px;
+    padding: 18px 60px 24px; gap: 14px;
     border-top: 1px solid #0e0e0e;
   }
   .dots { display: flex; gap: 6px; align-items: center; flex-wrap: wrap; }
@@ -112,7 +141,7 @@ const R = 42, CIRC = 2 * Math.PI * R;
 const phases = [
   { badge:"Opening", name:"Land Here", mins:1, color:"#00ffcc",
     hint:"slow breath — just arrive",
-    cues:["Breathe into the heart, and out of the heart.","Turn your attention inward.","Notice how your body feels right now.","Nothing to change. Nothing to fix.","Just arrive here.","Thank yourself for showing up."] },
+    cues:["breathe into your heart and out of the heart.","Turn your attention inward.","Notice how your body feels right now.","Nothing to change. Nothing to fix.","Just arrive here.","Thank yourself for showing up."] },
 
   { badge:"Ceremony", name:"Call It In", mins:2, color:"#bf80ff",
     hint:"tapping over the heart",
@@ -214,6 +243,10 @@ function render() {
           <div class="ring-time">${fmt(remaining)}</div>
         </div>
         <div class="hint" style="color:${col}44">${p.hint}</div>
+        <div class="breath-pill" style="border-color:${col}22">
+          <div class="breath-dot" style="background:${col}"></div>
+          <span class="breath-label" style="color:${col}66">breathe</span>
+        </div>
       </div>
       <div class="right">
         <div class="right-glow" style="background:${col}"></div>
