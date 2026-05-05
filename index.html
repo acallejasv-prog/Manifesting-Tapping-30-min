@@ -1,1 +1,268 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+<title>Tapping — Hannah Joy</title>
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  html, body {
+    width: 100%; height: 100%;
+    background: #060606; color: #fff;
+    font-family: -apple-system, BlinkMacSystemFont, "SF Pro Display", "Segoe UI", sans-serif;
+    -webkit-font-smoothing: antialiased;
+    overflow: hidden; user-select: none; -webkit-user-select: none;
+  }
+  body { display: flex; align-items: center; justify-content: center; min-height: 100vh; }
 
+  .screen {
+    width: 100vw; height: 100vh;
+    display: grid;
+    grid-template-columns: 300px 1fr;
+    grid-template-rows: 1fr auto;
+    grid-template-areas: "left right" "left nav";
+  }
+
+  /* LEFT */
+  .left {
+    grid-area: left;
+    display: flex; flex-direction: column;
+    justify-content: center; align-items: flex-start;
+    padding: 40px 32px 40px 44px;
+    border-right: 1px solid #111;
+    position: relative;
+  }
+  .left-glow { position: absolute; inset: -100px; border-radius: 50%; filter: blur(100px); opacity: .06; pointer-events: none; transition: background 1s; }
+  .badge { font-size: 10px; font-weight: 700; letter-spacing: .2em; text-transform: uppercase; margin-bottom: 12px; transition: color .6s; z-index: 1; }
+  .phase-name { font-size: 46px; font-weight: 600; line-height: 1.05; color: #fff; margin-bottom: 32px; z-index: 1; }
+
+  .ring-wrap { position: relative; width: 100px; height: 100px; margin-bottom: 24px; z-index: 1; }
+  .ring-wrap svg { transform: rotate(-90deg); }
+  .ring-bg { fill: none; stroke: #161616; stroke-width: 3; }
+  .ring-fg { fill: none; stroke-width: 3; stroke-linecap: round; transition: stroke-dashoffset 1s linear, stroke .6s; }
+  .ring-time { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; font-size: 20px; font-weight: 300; color: #444; }
+
+  .hint { font-size: 11px; letter-spacing: .06em; text-transform: uppercase; z-index: 1; line-height: 1.6; transition: color .6s; }
+
+  /* RIGHT */
+  .right {
+    grid-area: right;
+    display: flex; flex-direction: column;
+    justify-content: center;
+    padding: 40px 60px 28px 60px;
+    gap: 10px;
+    position: relative; overflow: hidden;
+  }
+  .right-glow { position: absolute; inset: -200px; border-radius: 50%; filter: blur(140px); opacity: .04; pointer-events: none; transition: background 1s; }
+
+  .cue { display: flex; flex-direction: column; gap: 4px; transition: all .5s ease; }
+  .cue-num { font-size: 9px; font-weight: 700; letter-spacing: .14em; text-transform: uppercase; transition: color .5s; }
+  .cue-text { font-weight: 400; line-height: 1.25; transition: color .5s, text-shadow .5s, font-size .35s; letter-spacing: -.2px; }
+
+  .cue.active .cue-text  { font-size: 38px; font-weight: 500; }
+  .cue.done-cue .cue-text { font-size: 18px; color: #1c1c1c; text-shadow: none; }
+  .cue.done-cue .cue-num  { color: #1c1c1c; }
+  .cue.dim .cue-text     { font-size: 18px; color: #181818; text-shadow: none; }
+  .cue.dim .cue-num      { color: #181818; }
+
+  .cue-bar { height: 2px; border-radius: 2px; background: #111; overflow: hidden; display: none; margin-top: 6px; }
+  .cue.active .cue-bar { display: block; }
+  .cue-bar-fill { height: 100%; border-radius: 2px; transition: width .9s linear; }
+
+  /* NAV */
+  .nav {
+    grid-area: nav;
+    display: flex; align-items: center;
+    padding: 18px 60px 24px;
+    gap: 14px;
+    border-top: 1px solid #0e0e0e;
+  }
+  .dots { display: flex; gap: 6px; align-items: center; flex-wrap: wrap; }
+  .dot { width: 7px; height: 7px; border-radius: 50%; background: #1a1a1a; cursor: pointer; transition: all .3s; flex-shrink: 0; }
+  .dot.active { transform: scale(1.6); }
+  .dot.done   { background: #252525; }
+
+  .overall-wrap { flex: 1; height: 2px; background: #111; border-radius: 2px; overflow: hidden; }
+  .overall-fill { height: 100%; border-radius: 2px; transition: width 1s linear; }
+  .session-time { font-size: 11px; color: #2a2a2a; letter-spacing: .04em; white-space: nowrap; }
+  .session-time span { color: #444; font-weight: 500; }
+
+  .btn { padding: 11px 22px; border-radius: 11px; border: 1px solid #1e1e1e; background: #0d0d0d; color: #555; font-size: 13px; font-weight: 500; cursor: pointer; transition: all .2s; white-space: nowrap; }
+  .btn:hover { border-color: #333; color: #888; }
+  .btn.primary { background: #fff; color: #000; border-color: transparent; font-weight: 600; }
+  .btn.primary:hover { background: #e8e8e8; }
+  .btn:disabled { opacity: .12; cursor: default; }
+
+  .play-btn { width: 42px; height: 42px; border-radius: 50%; border: 1px solid #1e1e1e; background: #0d0d0d; color: #888; font-size: 14px; cursor: pointer; display: flex; align-items: center; justify-content: center; transition: all .2s; flex-shrink: 0; }
+  .play-btn:hover { border-color: #444; color: #ccc; }
+
+  .end-screen { width: 100vw; height: 100vh; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 20px; text-align: center; }
+  .end-screen .glyph { font-size: 48px; }
+  .end-screen h2 { font-size: 44px; font-weight: 500; }
+  .end-screen p  { font-size: 16px; color: #444; line-height: 1.8; }
+  .end-dots { display: flex; gap: 6px; justify-content: center; flex-wrap: wrap; margin-bottom: 8px; }
+</style>
+</head>
+<body>
+<div id="root"></div>
+<script>
+const TOTAL = 25 * 60;
+const R = 42, CIRC = 2 * Math.PI * R;
+
+const phases = [
+  { badge:"Opening", name:"Land Here", mins:1, color:"#00ffcc",
+    hint:"slow breath — just arrive",
+    cues:["And into the heart, and out of the heart.","Turn your attention inward.","Notice how your body feels right now.","Nothing to change. Nothing to fix.","Just arrive here.","Thank yourself for showing up."] },
+
+  { badge:"Ceremony", name:"Call It In", mins:2, color:"#bf80ff",
+    hint:"tapping over the heart",
+    cues:["Tapping over the heart — repeat after me.","I invoke the highest forces of love.","I call forward my highest self.","I acknowledge my own divinity.","I ask my guides to be here with me now.","Please clear any obstacles on my path.","I remember the power of my heart.","Thank you. Thank you. Thank you."] },
+
+  { badge:"Intention", name:"Name the Desire", mins:2, color:"#ff80bf",
+    hint:"pause — let them fill the silence",
+    cues:["I am here to make my vision my reality.","Take a breath.","I am manifesting… [ speak it out loud ]","Feel what it's like to say that.","Notice the excitement.","Notice what else comes up.","Both are welcome here."] },
+
+  { badge:"EFT", name:"Honor the Hard", mins:2, color:"#ff6060",
+    hint:"keep tapping — no rush",
+    cues:["Even though I feel excited, I also feel… [ name it ]","Keep naming. Repeat after me.","Where do you feel it in your body?","Breathe into it. Stay there.","It is okay to feel this.","I deeply love and accept myself.","I give myself all the compassion I need."] },
+
+  { badge:"Release", name:"Let the Doubts Speak", mins:3, color:"#ff9900",
+    hint:"60 sec silence — just hold space",
+    cues:["Name every doubt out loud.","It will be hard. It will take too long. I can't.","Keep going. Name them all.","[ 60 seconds — tap and breathe ]","Which one has the most charge?","Pick one. Stay with it.","That is the one we are healing today."] },
+
+  { badge:"Healing", name:"Accept & Heal", mins:3, color:"#ff5577",
+    hint:"slow and loving — hold this space",
+    cues:["Even though I feel this… I love and accept myself.","Even though I've been carrying this a long time… I love and accept myself.","Even though I don't know how to let this go… I love and accept myself.","I give this feeling the love it has always needed.","I stop fighting it.","I am now an open channel."] },
+
+  { badge:"Pivot", name:"Remember Your Power", mins:2, color:"#ffee00",
+    hint:"energy rises here — let it",
+    cues:["I have agency in how this process goes.","I am open to be committed with my desire.","I am powerful. I am committed.","As I take the first steps, doors open.","I don't need to know the how.","The universe responds to my energy."] },
+
+  { badge:"Expansion", name:"Open to Possibilities", mins:2, color:"#00cfff",
+    hint:"open and receptive",
+    cues:["I open myself to what I cannot yet see.","I open myself to lucky connections finding me.","I open myself to solutions arriving in unexpected ways.","I open myself to being pleasantly surprised.","I release the need to control how it happens.","There is more available to me than I know.","I am open. I am ready. I am willing."] },
+
+  { badge:"Vision", name:"Co-Create", mins:2, color:"#88ffaa",
+    hint:"imagination active — shift the body",
+    cues:["Imagine doors already opening.","Synchronicities. Surprises. Magic.","How would you sit if it were already true?","Change your posture right now.","Let your body lead the shift.","Feel this new energy moving through you."] },
+
+  { badge:"Fire", name:"Activate", mins:3, color:"#ff4488",
+    hint:"fast rhythm — short phrases",
+    cues:["My spirit wants to be fully self-expressed.","I access new levels of energy and magic.","I feel amazing as I take action.","I love the challenge. I rise to the occasion.","No failure — only refinement.","I am ready to get in the game.","I allow this to be miraculous."] },
+
+  { badge:"Gratitude", name:"Seal It", mins:3, color:"#c9a84c",
+    hint:"soft and clean — no more words needed",
+    cues:["Hands over your heart.","Breathe into this space you just created.","I am loved.","I am all that I need to be.","I honor the sacred soul within me.","Thank you. Thank you. Thank you.","[ final breath — seal it in silence ]"] },
+];
+
+phases.forEach(p => p.secs = p.mins * 60);
+
+let cur = 0, phaseElapsed = 0, running = false, ticker = null;
+
+function fmt(s) { const m = Math.floor(s/60), ss = s%60; return m+':'+String(ss).padStart(2,'0'); }
+function totalElapsed() { return phases.slice(0,cur).reduce((a,p)=>a+p.secs,0)+phaseElapsed; }
+function activeCue(p, e) { return Math.min(Math.floor(e / (p.secs / p.cues.length)), p.cues.length - 1); }
+function cueProgress(p, e) { const slot = p.secs / p.cues.length, ac = activeCue(p,e); return Math.min((e - ac*slot)/slot, 1); }
+
+function render() {
+  const root = document.getElementById('root');
+  if (!root) return;
+  if (cur >= phases.length) { renderEnd(); return; }
+
+  const p = phases[cur];
+  const col = p.color;
+  const pct = Math.min(phaseElapsed/p.secs, 1);
+  const remaining = Math.max(p.secs-phaseElapsed, 0);
+  const sessionDone = totalElapsed();
+  const dashOffset = CIRC*(1-pct);
+  const ac = activeCue(p, phaseElapsed);
+  const cpct = cueProgress(p, phaseElapsed);
+  const shadow = `0 0 18px ${col}aa, 0 0 44px ${col}44`;
+
+  const dots = phases.map((ph,i) => {
+    const dc = i===cur ? ph.color : i<cur ? '#252525' : '#1a1a1a';
+    return `<div class="dot${i===cur?' active':i<cur?' done':''}" style="background:${dc}" onclick="jump(${i})"></div>`;
+  }).join('');
+
+  const cueHtml = p.cues.map((c,i) => {
+    const cls = 'cue ' + (i<ac ? 'done-cue' : i===ac ? 'active' : 'dim');
+    const isActive = i===ac;
+    const barPct = isActive ? (cpct*100).toFixed(1) : i<ac ? 100 : 0;
+    const numStyle  = isActive ? `color:${col}88` : '';
+    const textStyle = isActive ? `color:${col};text-shadow:${shadow}` : '';
+    return `<div class="${cls}">
+      <span class="cue-num" style="${numStyle}">0${i+1}</span>
+      <span class="cue-text" style="${textStyle}">${c}</span>
+      <div class="cue-bar"><div class="cue-bar-fill" style="width:${barPct}%;background:${col}66"></div></div>
+    </div>`;
+  }).join('');
+
+  root.innerHTML = `
+    <div class="screen">
+      <div class="left">
+        <div class="left-glow" style="background:${col}"></div>
+        <div class="badge" style="color:${col};text-shadow:0 0 10px ${col}88">${p.badge}</div>
+        <div class="phase-name">${p.name}</div>
+        <div class="ring-wrap">
+          <svg width="100" height="100" viewBox="0 0 100 100">
+            <circle class="ring-bg" cx="50" cy="50" r="${R}"/>
+            <circle class="ring-fg" cx="50" cy="50" r="${R}"
+              stroke="${col}" style="filter:drop-shadow(0 0 5px ${col})"
+              stroke-dasharray="${CIRC.toFixed(1)}"
+              stroke-dashoffset="${dashOffset.toFixed(1)}"/>
+          </svg>
+          <div class="ring-time">${fmt(remaining)}</div>
+        </div>
+        <div class="hint" style="color:${col}44">${p.hint}</div>
+      </div>
+      <div class="right">
+        <div class="right-glow" style="background:${col}"></div>
+        ${cueHtml}
+      </div>
+      <div class="nav">
+        <div class="dots">${dots}</div>
+        <div class="overall-wrap"><div class="overall-fill" style="width:${(sessionDone/TOTAL*100).toFixed(2)}%;background:${col}66"></div></div>
+        <div class="session-time"><span>${fmt(sessionDone)}</span> / 25:00</div>
+        <button class="play-btn" onclick="togglePlay()" style="${running?'border-color:'+col+'44;color:'+col:''}">
+          ${running?'⏸':'▶'}
+        </button>
+        <button class="btn" onclick="jump(${cur-1})" ${cur===0?'disabled':''}>←</button>
+        <button class="btn primary" onclick="jump(${cur+1})">${cur===phases.length-1?'Finish ✦':'Next →'}</button>
+      </div>
+    </div>`;
+}
+
+function renderEnd() {
+  const root = document.getElementById('root');
+  const dots = phases.map((_,i)=>`<div class="dot done" style="background:#252525" onclick="jump(${i})"></div>`).join('');
+  root.innerHTML = `
+    <div class="end-screen">
+      <div class="end-dots">${dots}</div>
+      <div class="glyph" style="color:#c9a84c;text-shadow:0 0 30px #c9a84c88">✦</div>
+      <h2>Session Complete</h2>
+      <p>25 minutes held with grace.</p>
+      <button class="btn primary" onclick="restart()" style="margin-top:16px;padding:16px 48px;font-size:16px">Begin Again</button>
+    </div>`;
+}
+
+function togglePlay() { running ? pause() : play(); }
+function play() {
+  running = true;
+  ticker = setInterval(()=>{
+    phaseElapsed++;
+    if (phaseElapsed >= phases[cur].secs) {
+      if (cur < phases.length-1) { cur++; phaseElapsed=0; }
+      else { pause(); cur=phases.length; render(); return; }
+    }
+    render();
+  }, 1000);
+  render();
+}
+function pause() { running=false; clearInterval(ticker); render(); }
+function jump(i) { pause(); cur=Math.max(0,Math.min(phases.length-1,i)); phaseElapsed=0; render(); }
+function restart() { pause(); cur=0; phaseElapsed=0; render(); }
+
+render();
+</script>
+</body>
+</html>
