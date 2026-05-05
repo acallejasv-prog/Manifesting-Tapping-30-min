@@ -1,0 +1,365 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+<title>Tapping — Hannah Joy</title>
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  html, body {
+    width: 100%; height: 100%;
+    background: #060606;
+    color: #fff;
+    font-family: -apple-system, BlinkMacSystemFont, "SF Pro Display", "Segoe UI", sans-serif;
+    -webkit-font-smoothing: antialiased;
+    overflow: hidden;
+    user-select: none;
+    -webkit-user-select: none;
+  }
+
+  /* ── MAIN LAYOUT ── */
+  .screen {
+    width: 100vw; height: 100vh;
+    display: grid;
+    grid-template-columns: 320px 1fr;
+    grid-template-rows: 1fr auto;
+    grid-template-areas:
+      "left  right"
+      "left  nav";
+  }
+
+  /* ── LEFT PANEL ── */
+  .left {
+    grid-area: left;
+    display: flex; flex-direction: column;
+    justify-content: center; align-items: flex-start;
+    padding: 40px 36px 40px 48px;
+    border-right: 1px solid #111;
+    position: relative;
+  }
+
+  .left-glow {
+    position: absolute; inset: -100px;
+    border-radius: 50%;
+    filter: blur(100px);
+    opacity: .06;
+    pointer-events: none;
+    transition: background 1s;
+  }
+
+  .badge {
+    font-size: 11px; font-weight: 700;
+    letter-spacing: .2em; text-transform: uppercase;
+    margin-bottom: 14px;
+    transition: color .6s, text-shadow .6s;
+    z-index: 1;
+  }
+
+  .phase-name {
+    font-size: 52px; font-weight: 600;
+    line-height: 1.05; letter-spacing: -.5px;
+    color: #fff; margin-bottom: 36px;
+    z-index: 1;
+  }
+
+  /* Ring */
+  .ring-wrap {
+    position: relative; width: 110px; height: 110px;
+    margin-bottom: 28px; z-index: 1;
+  }
+  .ring-wrap svg { transform: rotate(-90deg); }
+  .ring-bg { fill: none; stroke: #161616; stroke-width: 3; }
+  .ring-fg { fill: none; stroke-width: 3; stroke-linecap: round; transition: stroke-dashoffset 1s linear, stroke .6s; }
+  .ring-time {
+    position: absolute; inset: 0;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 22px; font-weight: 300; color: #444;
+    letter-spacing: .02em;
+  }
+
+  .hint {
+    font-size: 12px; color: #2a2a2a;
+    letter-spacing: .06em; text-transform: uppercase;
+    z-index: 1; line-height: 1.6;
+    transition: color .6s;
+  }
+
+  /* ── RIGHT PANEL — CUES ── */
+  .right {
+    grid-area: right;
+    display: flex; flex-direction: column;
+    justify-content: center;
+    padding: 48px 64px 32px 64px;
+    gap: 20px;
+    position: relative; overflow: hidden;
+  }
+
+  .right-glow {
+    position: absolute; inset: -200px;
+    border-radius: 50%;
+    filter: blur(140px);
+    opacity: .04;
+    pointer-events: none;
+    transition: background 1s;
+  }
+
+  /* CUE ROWS */
+  .cue {
+    display: flex; flex-direction: column;
+    gap: 8px;
+    transition: opacity .5s ease;
+    position: relative;
+  }
+
+  .cue-num {
+    font-size: 10px; font-weight: 700;
+    letter-spacing: .15em; text-transform: uppercase;
+    transition: color .5s, opacity .5s;
+  }
+
+  .cue-text {
+    font-size: 42px; font-weight: 400; line-height: 1.2;
+    transition: color .5s, text-shadow .5s, font-size .4s;
+    letter-spacing: -.3px;
+  }
+
+  /* States */
+  .cue.active .cue-text  { font-size: 46px; font-weight: 500; }
+  .cue.done-cue          { opacity: 1; }
+  .cue.done-cue .cue-text { color: #181818; text-shadow: none; font-size: 30px; }
+  .cue.done-cue .cue-num  { color: #181818; }
+  .cue.dim               { opacity: 1; }
+  .cue.dim .cue-text     { color: #141414; text-shadow: none; font-size: 30px; }
+  .cue.dim .cue-num      { color: #141414; }
+
+  /* Sub-progress bar under active cue */
+  .cue-bar {
+    height: 2px; border-radius: 2px;
+    background: #111; overflow: hidden;
+    display: none;
+    margin-top: 4px;
+  }
+  .cue.active .cue-bar { display: block; }
+  .cue-bar-fill { height: 100%; border-radius: 2px; transition: width .9s linear; }
+
+  /* ── NAV ── */
+  .nav {
+    grid-area: nav;
+    display: flex; align-items: center;
+    padding: 20px 64px 28px;
+    gap: 16px;
+    border-top: 1px solid #0e0e0e;
+  }
+
+  .dots { display: flex; gap: 8px; align-items: center; }
+  .dot {
+    width: 8px; height: 8px; border-radius: 50%;
+    background: #1a1a1a; cursor: pointer;
+    transition: all .3s; flex-shrink: 0;
+  }
+  .dot.active { transform: scale(1.6); }
+  .dot.done   { background: #252525; }
+
+  .spacer { flex: 1; }
+
+  .session-time { font-size: 12px; color: #2a2a2a; letter-spacing: .04em; }
+  .session-time span { color: #444; font-weight: 500; }
+
+  .overall-wrap { flex: 1; height: 2px; background: #111; border-radius: 2px; overflow: hidden; }
+  .overall-fill { height: 100%; border-radius: 2px; transition: width 1s linear; }
+
+  .btn {
+    padding: 12px 28px; border-radius: 12px;
+    border: 1px solid #1e1e1e; background: #0d0d0d;
+    color: #555; font-size: 14px; font-weight: 500;
+    cursor: pointer; transition: all .2s;
+    white-space: nowrap;
+  }
+  .btn:hover { border-color: #333; color: #888; }
+  .btn.primary { background: #fff; color: #000; border-color: transparent; font-weight: 600; }
+  .btn.primary:hover { background: #e8e8e8; }
+  .btn:disabled { opacity: .12; cursor: default; }
+
+  .play-btn {
+    width: 44px; height: 44px; border-radius: 50%;
+    border: 1px solid #1e1e1e; background: #0d0d0d;
+    color: #888; font-size: 15px; cursor: pointer;
+    display: flex; align-items: center; justify-content: center;
+    transition: all .2s; flex-shrink: 0;
+  }
+  .play-btn:hover { border-color: #444; color: #ccc; }
+
+  /* END SCREEN */
+  .end-screen {
+    width: 100vw; height: 100vh;
+    display: flex; flex-direction: column;
+    align-items: center; justify-content: center; gap: 20px;
+    text-align: center;
+  }
+  .end-screen .glyph { font-size: 52px; }
+  .end-screen h2 { font-size: 48px; font-weight: 500; }
+  .end-screen p  { font-size: 18px; color: #444; line-height: 1.8; }
+  .end-dots { display: flex; gap: 8px; justify-content: center; margin-bottom: 8px; }
+</style>
+</head>
+<body>
+<div id="root"></div>
+
+<script>
+const TOTAL = 3600;
+const R = 46, CIRC = 2 * Math.PI * R;
+
+const phases = [
+  { badge:"Opening",   name:"Land Here",              mins:3,  color:"#00ffcc",
+    hint:"slow breath — nothing to fix",
+    cues:[{t:"Feel the weight of your body. Just arrive.",p:0},{t:"Nothing to change. Nothing to fix. Just notice.",p:0},{t:"Thank yourself for showing up to this.",p:0}] },
+
+  { badge:"Ceremony",  name:"Call It In",              mins:4,  color:"#bf80ff",
+    hint:"tapping over the heart",
+    cues:[{t:"I invoke the highest forces of love.",p:0},{t:"I call forward my highest self.",p:0},{t:"Thank you. Thank you. Thank you.",p:1}] },
+
+  { badge:"Intention", name:"Name the Desire",         mins:6,  color:"#ff80bf",
+    hint:"pause — let them fill the silence",
+    cues:[{t:"I am manifesting…",p:1},{t:"Feel where that lives in your body.",p:0},{t:"Notice the excitement. Notice the fear.",p:0}] },
+
+  { badge:"EFT",       name:"Honor the Hard",          mins:8,  color:"#ff6060",
+    hint:"keep tapping — no rush",
+    cues:[{t:"Even though I feel… [name it all]",p:1},{t:"Where does it live in your body?",p:0},{t:"I deeply love and accept myself.",p:0}] },
+
+  { badge:"Release",   name:"Let the Doubts Speak",    mins:10, color:"#ff9900",
+    hint:"60 sec silence — just hold space",
+    cues:[{t:"Name every doubt. All of them.",p:0},{t:"[ 60 seconds — tap and breathe ]",p:1},{t:"Which one has the most charge?",p:0}] },
+
+  { badge:"Pivot",     name:"Remember Your Power",     mins:6,  color:"#ffee00",
+    hint:"energy rises here — let it",
+    cues:[{t:"I have agency in how this goes.",p:0},{t:"Life dances with those on the floor.",p:0},{t:"I just need the yes.",p:0}] },
+
+  { badge:"Expansion", name:"Co-Create",               mins:8,  color:"#00cfff",
+    hint:"imagination active — shift the body",
+    cues:[{t:"Imagine doors already opening.",p:0},{t:"How would you sit if it were true?",p:0},{t:"Let your body lead the shift.",p:0}] },
+
+  { badge:"Fire",      name:"Activate",                mins:8,  color:"#ff4488",
+    hint:"fast rhythm — short phrases",
+    cues:[{t:"I am powerful. I rise to the occasion.",p:0},{t:"No failure — only refinement.",p:0},{t:"I allow this to be miraculous.",p:0}] },
+
+  { badge:"Gratitude", name:"Seal It",                 mins:7,  color:"#c9a84c",
+    hint:"soft and clean — no more words needed",
+    cues:[{t:"I am loved. I am all that I need.",p:0},{t:"Thank you. Thank you. Thank you.",p:1},{t:"[ final breath — seal it in silence ]",p:1}] },
+];
+
+phases.forEach(p => p.secs = p.mins * 60);
+
+let cur = 0, phaseElapsed = 0, running = false, ticker = null;
+
+function fmt(s) { const m = Math.floor(s/60), ss = s%60; return m+':'+String(ss).padStart(2,'0'); }
+function totalElapsed() { return phases.slice(0,cur).reduce((a,p)=>a+p.secs,0)+phaseElapsed; }
+function activeCue(p, e) { return Math.min(Math.floor(e / (p.secs/3)), 2); }
+function cueProgress(p, e) { const slot=p.secs/3, ac=activeCue(p,e); return Math.min((e-ac*slot)/slot,1); }
+
+function render() {
+  const root = document.getElementById('root');
+  if (!root) return;
+  if (cur >= phases.length) { renderEnd(); return; }
+
+  const p = phases[cur];
+  const col = p.color;
+  const pct = Math.min(phaseElapsed/p.secs, 1);
+  const remaining = Math.max(p.secs-phaseElapsed, 0);
+  const sessionDone = totalElapsed();
+  const dashOffset = CIRC*(1-pct);
+  const ac = activeCue(p, phaseElapsed);
+  const cpct = cueProgress(p, phaseElapsed);
+
+  const shadow = `0 0 20px ${col}aa, 0 0 50px ${col}44`;
+
+  const dots = phases.map((ph,i) => {
+    const dc = i===cur ? ph.color : i<cur ? '#252525' : '#1a1a1a';
+    return `<div class="dot${i===cur?' active':i<cur?' done':''}" style="background:${dc}" onclick="jump(${i})"></div>`;
+  }).join('');
+
+  const cueHtml = p.cues.map((c,i) => {
+    let cls = 'cue ' + (i<ac ? 'done-cue' : i===ac ? 'active' : 'dim');
+    const isActive = i===ac;
+    const barPct = isActive ? (cpct*100).toFixed(1) : i<ac ? 100 : 0;
+    const numStyle = isActive ? `color:${col}88` : '';
+    const textStyle = isActive ? `color:${col};text-shadow:${shadow}` : '';
+    return `<div class="${cls}">
+      <span class="cue-num" style="${numStyle}">0${i+1}</span>
+      <span class="cue-text" style="${textStyle}">${c.t}</span>
+      <div class="cue-bar"><div class="cue-bar-fill" style="width:${barPct}%;background:${col}66"></div></div>
+    </div>`;
+  }).join('');
+
+  root.innerHTML = `
+    <div class="screen">
+      <div class="left">
+        <div class="left-glow" style="background:${col}"></div>
+        <div class="badge" style="color:${col};text-shadow:0 0 12px ${col}88">${p.badge}</div>
+        <div class="phase-name">${p.name}</div>
+        <div class="ring-wrap">
+          <svg width="110" height="110" viewBox="0 0 110 110">
+            <circle class="ring-bg" cx="55" cy="55" r="${R}"/>
+            <circle class="ring-fg" cx="55" cy="55" r="${R}"
+              stroke="${col}"
+              style="filter:drop-shadow(0 0 6px ${col})"
+              stroke-dasharray="${CIRC.toFixed(1)}"
+              stroke-dashoffset="${dashOffset.toFixed(1)}"/>
+          </svg>
+          <div class="ring-time">${fmt(remaining)}</div>
+        </div>
+        <div class="hint" style="color:${col}33">${p.hint}</div>
+      </div>
+
+      <div class="right">
+        <div class="right-glow" style="background:${col}"></div>
+        ${cueHtml}
+      </div>
+
+      <div class="nav">
+        <div class="dots">${dots}</div>
+        <div class="overall-wrap"><div class="overall-fill" style="width:${(sessionDone/TOTAL*100).toFixed(2)}%;background:${col}66"></div></div>
+        <div class="session-time"><span>${fmt(sessionDone)}</span> / 60:00</div>
+        <button class="play-btn" onclick="togglePlay()" style="${running?'border-color:'+col+'44;color:'+col:''}">
+          ${running?'⏸':'▶'}
+        </button>
+        <button class="btn" onclick="jump(${cur-1})" ${cur===0?'disabled':''}>←</button>
+        <button class="btn primary" onclick="jump(${cur+1})">${cur===phases.length-1?'Finish ✦':'Next →'}</button>
+      </div>
+    </div>`;
+}
+
+function renderEnd() {
+  const root = document.getElementById('root');
+  const dots = phases.map((_,i)=>`<div class="dot done" style="background:#252525" onclick="jump(${i})"></div>`).join('');
+  root.innerHTML = `
+    <div class="end-screen">
+      <div class="end-dots">${dots}</div>
+      <div class="glyph" style="color:#c9a84c;text-shadow:0 0 30px #c9a84c88">✦</div>
+      <h2>Session Complete</h2>
+      <p>60 minutes held with grace.</p>
+      <button class="btn primary" onclick="restart()" style="margin-top:16px;padding:16px 48px;font-size:16px">Begin Again</button>
+    </div>`;
+}
+
+function togglePlay() { running ? pause() : play(); }
+function play() {
+  running = true;
+  ticker = setInterval(()=>{
+    phaseElapsed++;
+    if (phaseElapsed >= phases[cur].secs) {
+      if (cur < phases.length-1) { cur++; phaseElapsed=0; }
+      else { pause(); cur=phases.length; render(); return; }
+    }
+    render();
+  }, 1000);
+  render();
+}
+function pause() { running=false; clearInterval(ticker); render(); }
+function jump(i) { pause(); cur=Math.max(0,Math.min(phases.length-1,i)); phaseElapsed=0; render(); }
+function restart() { pause(); cur=0; phaseElapsed=0; render(); }
+
+render();
+</script>
+</body>
+</html>
